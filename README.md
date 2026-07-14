@@ -2,6 +2,9 @@
 
 A draggable subtitle sync timeline for [Harbor](https://github.com/harborstremio/harbor), inspired by FastStream's resync tool. Drag the subtitle track against the playhead until the line you hear sits where it should — the offset applies instantly via mpv's `sub-delay`.
 
+<img width="2560" height="1440" alt="harbor_qQKIng3asq" src="https://github.com/user-attachments/assets/94c0155b-1360-4c2a-893c-db58f88ab2dd" />
+<img width="2560" height="1440" alt="harbor_XzSDuvjEeS" src="https://github.com/user-attachments/assets/3dfa7639-1b07-4854-b1ad-1e4300cade82" />
+
 ## Install
 
 1. Open Harbor → **Settings → Advanced → Custom JS**
