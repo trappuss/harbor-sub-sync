@@ -165,7 +165,7 @@
     dragging: false, panning: false, dragX: 0, dragDelay: 0, panStart: 0,
     moved: 0, setPending: false, cueEls: [], harvest: false,
     panOff: 0, tick: 0, mediaKey: null, cueSource: "none",
-    scanning: false, scanCancel: false,
+    scanning: false, scanCancel: false, dismissed: false,
   };
   try {
     var z = parseFloat(localStorage.getItem("fss-zoom"));
@@ -223,8 +223,9 @@
   }
 
   function flashPill(text) {
-    pill.textContent = text;
-    setTimeout(function () { pill.textContent = "⇄ CC sync"; }, 4000);
+    if (!pillLabel) return;
+    pillLabel.textContent = text;
+    setTimeout(function () { pillLabel.textContent = "⇄ CC sync"; }, 4000);
   }
 
   async function checkMedia() {
@@ -235,6 +236,7 @@
       if (key === S.mediaKey) return;
       S.mediaKey = key;
       S.cues = []; S.cueSource = "none"; S.harvest = false;
+      S.dismissed = false; // new title → pill comes back
       var saved = NaN;
       try { saved = parseFloat(localStorage.getItem(key)); } catch (e) {}
       if (isFinite(saved) && Math.abs(saved) > 0.001 && Math.abs(S.delay) < 0.001) {
@@ -250,10 +252,14 @@
   var css = document.createElement("style");
   css.textContent =
     "#fss-pill{position:fixed;right:18px;bottom:132px;z-index:2147483000;display:none;" +
+    "align-items:center;gap:8px;" +
     "background:rgba(20,22,28,.92);color:#eee;border:1px solid rgba(255,255,255,.18);" +
-    "border-radius:999px;padding:6px 14px;font:600 12px system-ui,sans-serif;cursor:pointer;" +
+    "border-radius:999px;padding:6px 8px 6px 14px;font:600 12px system-ui,sans-serif;" +
     "user-select:none;backdrop-filter:blur(6px)}" +
+    "#fss-pill-label{cursor:pointer}" +
     "#fss-pill:hover{background:rgba(40,44,54,.95)}" +
+    "#fss-pill-x{cursor:pointer;opacity:.5;padding:0 5px;border-radius:999px;font-size:13px;line-height:1}" +
+    "#fss-pill-x:hover{opacity:1;background:rgba(255,255,255,.15)}" +
     "#fss-panel{position:fixed;left:12px;right:12px;bottom:96px;z-index:2147483001;display:none;" +
     "background:rgba(14,16,20,.94);border:1px solid rgba(255,255,255,.14);border-radius:10px;" +
     "color:#e8e8e8;font:12px system-ui,sans-serif;backdrop-filter:blur(8px);user-select:none}" +
@@ -283,9 +289,11 @@
   // ── DOM ────────────────────────────────────────────────────────────
   var pill = document.createElement("div");
   pill.id = "fss-pill";
-  pill.textContent = "⇄ CC sync";
-  pill.title = "Subtitle sync timeline (Ctrl+Shift+Y)";
+  pill.innerHTML =
+    '<span id="fss-pill-label" title="Subtitle sync timeline (Ctrl+Shift+Y)">⇄ CC sync</span>' +
+    '<span id="fss-pill-x" title="Hide until the next title (Ctrl+Shift+Y brings it back)">✕</span>';
   document.body.appendChild(pill);
+  var pillLabel = pill.querySelector("#fss-pill-label");
 
   var panel = document.createElement("div");
   panel.id = "fss-panel";
@@ -338,8 +346,11 @@
         S.mediaKey = null;
       }
     } catch (e) { S.playerAlive = false; S.mediaKey = null; }
-    pill.style.display = S.playerAlive ? "block" : "none";
-    if (!S.playerAlive && S.open) close();
+    // only show while Harbor's player view is actually on screen
+    var uiOpen = !!document.querySelector("[data-harbor-player]");
+    var show = S.playerAlive && uiOpen && !S.dismissed;
+    pill.style.display = show ? "inline-flex" : "none";
+    if ((!S.playerAlive || !uiOpen) && S.open) close();
   }
 
   function nowTime() {
@@ -619,11 +630,20 @@
     cancelAnimationFrame(S.raf);
     saveCuesNow();
   }
-  pill.addEventListener("click", function () { S.open ? close() : open(); });
+  pill.querySelector("#fss-pill-label").addEventListener("click", function () {
+    S.open ? close() : open();
+  });
+  pill.querySelector("#fss-pill-x").addEventListener("click", function (e) {
+    e.stopPropagation();
+    S.dismissed = true;
+    pill.style.display = "none";
+    if (S.open) close();
+  });
 
   function onKey(e) {
     if (e.ctrlKey && e.shiftKey && (e.key === "Y" || e.key === "y")) {
       e.preventDefault();
+      S.dismissed = false; // hotkey always brings it back
       S.open ? close() : open();
       return;
     }
